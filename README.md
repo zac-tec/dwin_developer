@@ -149,6 +149,13 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Verification:** Documentation checked against the existing source structure and recorded command results. No browser or rendering tests rerun for this documentation change.
 - **Next:** User manually checks the sample at port 3211; resolve any current launch error before ICL research. Native ICL generation remains the intended unfinished milestone.
 
+### 2026-09-22 — User website inspected after empty output
+
+- **Input inspected:** User-provided `dgus-preview` folder contains `index.html`, `page2.html`, `page3.html`, and `css/style.css`. All three pages reference the existing stylesheet; no JavaScript or external assets are required.
+- **Finding:** CSS explicitly fixes the screen to **480 × 272**. This matches the supported static input contract. Select that resolution; 800 × 480 would add surrounding space, not explain completely missing output. The CSS mentions model DMG48270C043, but this is an unconfirmed source comment, not confirmation of the user's hardware.
+- **Remaining uncertainty:** No fresh render result or current UI error is available. A localhost:3211 connection attempt from the agent session failed; this does not establish what the user currently sees. Earlier Chromium startup failure remains relevant, but is not proven to be this attempt's cause.
+- **Next:** User should select 480 × 272 and click Render pages after import. Obtain the exact bottom status if no pages appear. No source changes or repeated browser tests were performed; uploaded files were left unchanged.
+
 ## Latest handoff — READ THIS FIRST
 
 - **Updated:** 2026-09-22. We are building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
@@ -156,7 +163,7 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Implemented:** Folder upload → one HTML file per page → exact target viewport → static capture → ordered PNG/JPEG ZIP and manifest. Local-only Express app, plain browser UI, Playwright renderer and Sharp export. Sample is under `examples/control-panel`.
 - **Not finished:** `32.icl` generation, native touch configuration, native fonts, live values, URL import and layout adaptation. Never call the ZIP flash-ready.
 - **Current blocker:** Chromium failed to launch under the restricted session. The normal-Terminal workaround on port 3211 was supplied; user success is **not confirmed**. Sample import and UI worked; full render/export did not pass verification.
-- **Next action:** Ask for the current bottom status or terminal error only if the user still reports trouble. Diagnose that specific issue. Respect the user's manual-testing preference; avoid broad repeated browser QA.
+- **Next action:** Investigate empty output for the user’s `dgus-preview` upload. Its three static HTML pages and local CSS fit the input contract; use 480 × 272. Ask for the current bottom status after Render pages before attributing this attempt to the earlier Chromium error. Uploaded source was left unchanged. Respect manual testing.
 - **Manual start:** From the repository root, run `PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers PORT=3211 npm start`, open `http://localhost:3211`, then load the sample. This assumes the browser is installed there; otherwise run setup with the same environment variable first. Keep the browser sandbox enabled.
 - **After rendering works:** Obtain exact display model/kernel and known-good DWIN-generated ICL examples. Implement verified ICL output before investigating native font libraries.
 - **Update rule:** Read `AGENTS.md`; append a progress entry and rewrite this final handoff after every meaningful change or agreed project decision. Keep this section last.
