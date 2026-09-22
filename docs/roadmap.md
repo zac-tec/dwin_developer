@@ -1,5 +1,7 @@
 # Roadmap
 
+Read the final **Latest handoff** in `../README.md` for current blockers and decisions. Checked items below mean code is implemented, not necessarily verified end-to-end. Chromium startup currently prevents confirmation of rendering/export; native ICL output remains unfinished.
+
 ## Stage 1 — Background assets (current)
 
 - [x] Static website folder upload, preserving relative assets
