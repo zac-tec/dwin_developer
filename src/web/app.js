@@ -5,8 +5,10 @@ let project,
   busy = false,
   renderedSize;
 const status = (text, error = false) => {
-  $("status").textContent = text;
-  $("status").classList.toggle("error", error);
+  for (const id of ["status", "action-status"]) {
+    $(id).textContent = text;
+    $(id).classList.toggle("error", error);
+  }
 };
 function setBusy(value) {
   busy = value;
@@ -25,13 +27,32 @@ function setBusy(value) {
     value || !pages.some((p) => p.included) || !renderedSize;
 }
 async function request(url, options = {}) {
-  const response = await fetch(url, options);
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(120000),
+    });
+  } catch (error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error(
+        "The server did not respond within 2 minutes. Check its Terminal for a rendering error. The server may still be processing this request.",
+      );
+    }
+    throw new Error(
+      "Cannot reach the app server. Keep npm start running in Terminal, then reload this page.",
+    );
+  }
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Request failed");
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.error ||
+        `Server request failed (${response.status}). Check Terminal for details.`,
+    );
   }
   return response;
 }
+
 const json = (body) => ({
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -253,3 +274,5 @@ $("export").onclick = async () => {
     setBusy(false);
   }
 };
+
+status("Ready. Choose a website folder or load the sample project.");

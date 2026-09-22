@@ -156,6 +156,13 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Remaining uncertainty:** No fresh render result or current UI error is available. A localhost:3211 connection attempt from the agent session failed; this does not establish what the user currently sees. Earlier Chromium startup failure remains relevant, but is not proven to be this attempt's cause.
 - **Next:** User should select 480 × 272 and click Render pages after import. Obtain the exact bottom status if no pages appear. No source changes or repeated browser tests were performed; uploaded files were left unchanged.
 
+### 2026-09-22 — No visible status reported
+
+- **Reported:** User sees no message at the bottom after attempting their upload. Exact runtime cause remains unknown; do not assume Chromium is the only cause.
+- **Changed:** Mirrored status beside Render pages, added a static startup message/noscript notice, explicit server-connectivity errors, and a two-minute HTTP request timeout. Timeout does not cancel server-side work.
+- **Verification:** JavaScript syntax and diff checks only; user retains manual testing. Reload the app to receive the frontend changes; status should immediately read “Ready”. A persistent “Loading app controls” message indicates frontend startup did not finish.
+- **Next:** Read the now-visible message near Render pages to distinguish frontend startup, connection, upload, and rendering failures. No successful render has yet been confirmed. Changes remain local pending remote synchronization.
+
 ## Latest handoff — READ THIS FIRST
 
 - **Updated:** 2026-09-22. We are building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
@@ -163,7 +170,7 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Implemented:** Folder upload → one HTML file per page → exact target viewport → static capture → ordered PNG/JPEG ZIP and manifest. Local-only Express app, plain browser UI, Playwright renderer and Sharp export. Sample is under `examples/control-panel`.
 - **Not finished:** `32.icl` generation, native touch configuration, native fonts, live values, URL import and layout adaptation. Never call the ZIP flash-ready.
 - **Current blocker:** Chromium failed to launch under the restricted session. The normal-Terminal workaround on port 3211 was supplied; user success is **not confirmed**. Sample import and UI worked; full render/export did not pass verification.
-- **Next action:** Investigate empty output for the user’s `dgus-preview` upload. Its three static HTML pages and local CSS fit the input contract; use 480 × 272. Ask for the current bottom status after Render pages before attributing this attempt to the earlier Chromium error. Uploaded source was left unchanged. Respect manual testing.
+- **Next action:** User reports no bottom status. Frontend now mirrors status beside Render pages and reports connection/timeout errors. Reload, confirm the Ready message, then retry the 480 × 272 upload and inspect that message. Root cause remains unconfirmed; preserve manual testing preference.
 - **Manual start:** From the repository root, run `PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers PORT=3211 npm start`, open `http://localhost:3211`, then load the sample. This assumes the browser is installed there; otherwise run setup with the same environment variable first. Keep the browser sandbox enabled.
 - **After rendering works:** Obtain exact display model/kernel and known-good DWIN-generated ICL examples. Implement verified ICL output before investigating native font libraries.
 - **Update rule:** Read `AGENTS.md`; append a progress entry and rewrite this final handoff after every meaningful change or agreed project decision. Keep this section last.

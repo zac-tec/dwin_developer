@@ -692,3 +692,18 @@ footer {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+#action-status {
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 10px;
+  border: 1px solid #dbe4da;
+  border-radius: 5px;
+  background: #f7faf5;
+  overflow-wrap: anywhere;
+}
+#action-status.error {
+  color: #a43a26;
+  background: #fff1eb;
+  border-color: #e5b9ab;
+}
