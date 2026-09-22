@@ -64,3 +64,15 @@ Tests launch Chromium. Run browser setup first, or set `DWIN_BROWSER_EXECUTABLE`
 This version binds to loopback and is intended for local development. It is not a hardened public upload service. Public hosting needs isolated render workers, bounded upload streams, authentication/rate limits, job scheduling, memory limits, and durable job state. See [architecture](docs/architecture.md).
 
 See [roadmap](docs/roadmap.md) for the next stages and [ICL research](docs/icl.md) for why the app does not emit an unverified ICL file.
+
+## macOS: rendering browser fails to launch
+
+If the message includes `bootstrap_check_in`, `MachPortRendezvousServer`, or `Permission denied (1100)`, the server may be running inside a restricted execution session that prevents Chromium from starting. Launch it in your normal macOS Terminal instead. Do not disable the browser sandbox.
+
+For this checkout, if the browser was installed under `.runtime/browsers`, run:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers PORT=3211 npm start
+```
+
+Then open http://localhost:3211 and re-import your folder or load the sample. Port 3211 avoids a conflict with an existing preview on 3210. If the browser is missing, run `PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers npm run setup:browser` first. This workaround still requires manual verification on your machine.

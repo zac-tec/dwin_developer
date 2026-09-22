@@ -194,15 +194,18 @@ app.post("/api/projects/:id/export", async (req, res, next) => {
     next(error);
   }
 });
-app.use((error, req, res, next) =>
-  res
-    .status(400)
-    .json({
-      error: error.message.includes("Executable doesn't exist")
-        ? "Chromium is missing. Run npm run setup:browser, then try again."
-        : error.message,
-    }),
-);
+app.use((error, req, res, next) => {
+  const message = String(error.message || "Request failed.");
+  if (message.includes("browserType.launch")) {
+    console.error("Rendering browser failed to start:", message);
+    return res.status(503).json({
+      error: message.includes("Executable doesn't exist")
+        ? "The rendering browser is missing. Run npm run setup:browser in Terminal, then restart the app."
+        : "The rendering browser could not start. If running inside a restricted development session, start the app from your normal Terminal and try again. Your uploaded pages have not been rendered. See the server terminal for details.",
+    });
+  }
+  res.status(400).json({ error: message.slice(0, 500) });
+});
 const expiry = setInterval(async () => {
   for (const [id, project] of projects)
     if (!project.busy && Date.now() - project.created > 3600000) {

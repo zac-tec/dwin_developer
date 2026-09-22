@@ -686,3 +686,9 @@ footer {
     font-size: 10px;
   }
 }
+
+/* Keep diagnostics within the workspace on every screen size. */
+#status {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
