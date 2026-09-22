@@ -163,14 +163,23 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Verification:** JavaScript syntax and diff checks only; user retains manual testing. Reload the app to receive the frontend changes; status should immediately read “Ready”. A persistent “Loading app controls” message indicates frontend startup did not finish.
 - **Next:** Read the now-visible message near Render pages to distinguish frontend startup, connection, upload, and rendering failures. No successful render has yet been confirmed. Changes remain local pending remote synchronization.
 
+### 2026-09-22 — Environment re-checked; Chromium now launches
+
+- **Observed:** On this machine the app is already running in two places: `http://localhost:3210` (started 19:56) and `http://localhost:3211` (started 20:08). Both respond with HTTP 200. Node v26, dependencies, and the Playwright Chromium under `.runtime/browsers` (chromium-1243) are all installed. Installed Google Chrome is also present.
+- **Finding (supersedes earlier blocker note):** Chromium **does launch** here now. The headless shell started successfully during a test run, so the earlier `bootstrap_check_in` / Mach-port launch failure is **not reproducing** in the current session. That earlier failure was tied to a restricted execution session; it is not the current state.
+- **Not yet verified:** A complete render-and-export test was started but was **interrupted before it finished**, so a full end-to-end render (correct 800×480 capture, warnings, ordered ZIP) is still unconfirmed. Several stale headless-browser processes left by earlier interrupted runs were cleaned up.
+- **Repository:** Local `main` is 4 commits ahead of `origin/main` (`77cf2c8`, `ca6207c`, `bab18d0`, `8d69818`). Nothing is uncommitted besides this documentation update. Remote push has not been re-attempted; do not assume it is synchronized.
+- **Next:** With the servers already running, reload the app, confirm the “Ready” status, then render. For the user's `dgus-preview` site select **480 × 272**. If a page does not appear, read the status text beside Render pages.
+
 ## Latest handoff — READ THIS FIRST
 
-- **Updated:** 2026-09-22. We are building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
-- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. Initial implementation was pushed. Launch-error fix `77cf2c8` is local with a previously failed push. This documentation work must be saved with its agent instructions; check `git status` and remote state before claiming everything is synchronized.
-- **Implemented:** Folder upload → one HTML file per page → exact target viewport → static capture → ordered PNG/JPEG ZIP and manifest. Local-only Express app, plain browser UI, Playwright renderer and Sharp export. Sample is under `examples/control-panel`.
+- **Updated:** 2026-09-22 (evening). We are building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
+- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. Local is 4 commits ahead of `origin/main`. Push has not been re-confirmed; do not claim remote sync.
+- **Running now:** Servers already up at `http://localhost:3210` and `http://localhost:3211` (both HTTP 200). No need to restart unless they are stopped.
+- **Implemented:** Folder upload → one HTML file per page → exact target viewport → static capture → ordered PNG/JPEG ZIP and manifest. Status is mirrored beside the Render button, with connection and timeout errors surfaced.
 - **Not finished:** `32.icl` generation, native touch configuration, native fonts, live values, URL import and layout adaptation. Never call the ZIP flash-ready.
-- **Current blocker:** Chromium failed to launch under the restricted session. The normal-Terminal workaround on port 3211 was supplied; user success is **not confirmed**. Sample import and UI worked; full render/export did not pass verification.
-- **Next action:** User reports no bottom status. Frontend now mirrors status beside Render pages and reports connection/timeout errors. Reload, confirm the Ready message, then retry the 480 × 272 upload and inspect that message. Root cause remains unconfirmed; preserve manual testing preference.
-- **Manual start:** From the repository root, run `PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers PORT=3211 npm start`, open `http://localhost:3211`, then load the sample. This assumes the browser is installed there; otherwise run setup with the same environment variable first. Keep the browser sandbox enabled.
-- **After rendering works:** Obtain exact display model/kernel and known-good DWIN-generated ICL examples. Implement verified ICL output before investigating native font libraries.
-- **Update rule:** Read `AGENTS.md`; append a progress entry and rewrite this final handoff after every meaningful change or agreed project decision. Keep this section last.
+- **Blocker update:** Chromium launch now **works** in this session (verified a headless shell starts). The earlier restricted-session launch failure is not current. A full render-to-ZIP result is still **unverified** because the confirming test was interrupted, not because it failed.
+- **Next action:** Reload the app and confirm the “Ready” status, then render. Use **480 × 272** for the user's `dgus-preview` site (its CSS fixes that size). Report the status text beside Render pages if no image appears.
+- **After rendering works:** Obtain the exact display model/kernel and known-good DWIN-generated ICL examples, then implement verified ICL output before native font work.
+- **Update rule:** Read `AGENTS.md`; append a progress entry and rewrite this final handoff after every meaningful change or agreed decision. Keep this section last.
+
