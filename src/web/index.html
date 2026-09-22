@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DWIN Developer — Background Studio</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c6556'/%3E%3Cpath d='M8 8h9a8 8 0 010 16H8z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/"
+        ><span class="mark">D</span>DWIN <b>Developer</b></a
+      ><span class="tag">BACKGROUND STUDIO <i>v0.1</i></span
+      ><a
+        class="repo"
+        href="https://github.com/zac-tec/dwin_developer"
+        target="_blank"
+        rel="noreferrer"
+        >Project on GitHub ↗</a
+      >
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <div class="eyebrow">FROM WEB TO DISPLAY</div>
+          <h1>Your interface. <em>Pixel perfect.</em></h1>
+          <p>
+            Turn display-sized HTML pages into crisp background assets for your
+            DWIN screen.
+          </p>
+        </div>
+        <span class="phase"><span></span> Stage 01 · Backgrounds</span>
+      </div>
+      <div class="workspace">
+        <aside>
+          <section>
+            <div class="step">
+              <span>01</span>
+              <h2>Website source</h2>
+            </div>
+            <label class="drop" id="drop"
+              ><span class="upload-icon">↥</span
+              ><strong>Choose a website folder</strong
+              ><small>HTML, CSS, images & local fonts</small
+              ><input id="folder" type="file" webkitdirectory multiple /><span
+                class="browse"
+                >Browse folder</span
+              ></label
+            >
+            <p class="hint" id="source-info">
+              One HTML file = one display page.<br />Upload a static,
+              pre-rendered website.
+            </p>
+            <button class="text-button" id="demo">
+              Or explore the sample project ↗
+            </button>
+          </section>
+          <section>
+            <div class="step">
+              <span>02</span>
+              <h2>Display dimensions</h2>
+            </div>
+            <label for="preset">Screen preset</label
+            ><select id="preset">
+              <option value="800,480">800 × 480 · Landscape</option>
+              <option value="480,272">480 × 272 · Landscape</option>
+              <option value="1024,600">1024 × 600 · Landscape</option>
+              <option value="480,800">480 × 800 · Portrait</option>
+              <option value="custom">Custom dimensions</option>
+            </select>
+            <div class="dimension-fields">
+              <label
+                >Width
+                <div>
+                  <input
+                    id="width"
+                    type="number"
+                    min="64"
+                    max="1920"
+                    value="800"
+                  /><span>px</span>
+                </div></label
+              ><span>×</span
+              ><label
+                >Height
+                <div>
+                  <input
+                    id="height"
+                    type="number"
+                    min="64"
+                    max="1920"
+                    value="480"
+                  /><span>px</span>
+                </div></label
+              >
+            </div>
+            <div class="ratio">
+              <span>Aspect ratio</span><b id="ratio">5 : 3</b>
+            </div>
+            <p class="hint">
+              Your layout stays exactly as designed.<br />No stretching, reflow
+              fixes or pagination.
+            </p>
+            <button id="render" class="primary" disabled>
+              Render pages <span>→</span>
+            </button>
+          </section>
+          <section>
+            <div class="step">
+              <span>03</span>
+              <h2>Export settings</h2>
+            </div>
+            <label class="range-label" for="quality"
+              >JPEG quality <b id="quality-value">95%</b></label
+            ><input id="quality" type="range" min="50" max="100" value="95" />
+            <p class="hint">
+              Lossless PNGs are always included.<br />JPEG uses 4:4:4 color
+              sampling.
+            </p>
+          </section>
+        </aside>
+        <div class="canvas-column">
+          <div class="canvas-toolbar">
+            <div>
+              <span class="live-dot"></span><b>Display preview</b
+              ><span id="preview-name">No page selected</span>
+            </div>
+            <span class="chip" id="size-chip">800 × 480 px</span>
+          </div>
+          <div class="canvas" id="canvas">
+            <div id="empty">
+              <div class="screen-icon">⌑</div>
+              <h3>A blank screen. A fresh start.</h3>
+              <p>
+                Upload your website or try the sample project<br />to see your
+                interface at its actual proportions.
+              </p>
+              <button id="demo-empty" class="secondary">
+                Load sample project →
+              </button>
+            </div>
+            <div id="screen-wrap" hidden>
+              <img id="screen" alt="Rendered display page" />
+              <div class="screen-caption">
+                <span>STATIC CAPTURE</span
+                ><span id="scale-note">Fit to workspace</span>
+              </div>
+            </div>
+          </div>
+          <div id="warnings" aria-live="polite"></div>
+          <div class="pages-head">
+            <h2>Pages <span id="page-count">0</span></h2>
+            <span>Select to preview · arrows change export order</span>
+          </div>
+          <div class="pages" id="pages">
+            <div class="pages-empty">Your rendered pages will appear here.</div>
+          </div>
+          <div class="export-panel">
+            <div>
+              <h3>Ready for the next step</h3>
+              <p>
+                Download numbered images and a page manifest.<br />Generate
+                <code>32.icl</code> with DWIN’s tool afterward.
+              </p>
+              <span class="notice"
+                >Image export · native ICL generation is not available yet</span
+              >
+            </div>
+            <button id="export" class="primary" disabled>
+              Download assets <span>↓</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="status" role="status" aria-live="polite">
+        Ready to import a website.
+      </div>
+      <footer>
+        <span>Designed for the screen. Built from the web.</span
+        ><span>Static pages first. Touch controls & fonts next.</span>
+      </footer>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

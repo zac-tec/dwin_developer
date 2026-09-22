@@ -1,0 +1,98 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  width: 800px;
+  height: 480px;
+  overflow: hidden;
+  background: #101d21;
+  color: #e8efee;
+  font-family: Arial, sans-serif;
+  padding: 30px 36px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #314047;
+  padding-bottom: 21px;
+}
+.brand {
+  font-size: 13px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+.online {
+  font-size: 11px;
+  color: #84cdaa;
+}
+h1 {
+  font-size: 29px;
+  font-weight: 500;
+  margin: 28px 0 5px;
+}
+p {
+  font-size: 13px;
+  color: #869fa2;
+  margin: 0;
+}
+.grid {
+  display: flex;
+  gap: 16px;
+  margin-top: 23px;
+}
+.card {
+  background: #1b2d32;
+  border: 1px solid #2b4045;
+  border-radius: 12px;
+  padding: 20px;
+  flex: 1;
+}
+.label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #8ba6a6;
+}
+.value {
+  font-size: 39px;
+  margin: 15px 0 7px;
+}
+.value small {
+  font-size: 16px;
+  color: #89a5a6;
+}
+.sub {
+  font-size: 11px;
+  color: #73c3a0;
+}
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 25px;
+}
+a {
+  display: inline-block;
+  text-decoration: none;
+  background: #a7ddbc;
+  color: #183b2b;
+  padding: 14px 29px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+.secondary {
+  background: #253a3e;
+  color: #a9c0bd;
+}
+.setting {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #2b4045;
+  padding: 18px 0;
+  font-size: 15px;
+}
+.setting b {
+  font-weight: normal;
+  color: #a7ddbc;
+}
