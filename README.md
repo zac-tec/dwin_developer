@@ -181,7 +181,7 @@ For discussion-only decisions, record the agreement even when no application cod
 ## Latest handoff — READ THIS FIRST
 
 - **Updated:** 2026-09-22. Building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
-- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. Local is 9 commits ahead of `origin/main` (4 prior + 1 new rework commit, uncommitted). Do **not** claim remote sync; push has not been re-attempted.
+- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. All rework committed as `e7a8c59` and pushed to `origin/main`.
 - **Rendering rework (just done):** Replaced server-side Playwright headless Chromium with in-browser iframe + `html2canvas` capture. The server now serves uploaded files at `/preview/<project-id>/` and receives captured PNGs at `POST /api/projects/:id/capture`. No `npm run setup:browser` is needed. `html2canvas` is imported client-side from `/vendor/html2canvas/`.
 - **Running:** `npm start` (or `npm run dev`). No servers are currently running — restart as needed. Open http://localhost:3210.
 - **Implemented:** Folder upload → iframe preview (CSP blocks JS and external resources) → html2canvas capture at chosen dimensions → page preview, ordering, inclusion → PNG/JPEG ZIP export with manifest. `aspect.js` is integrated to detect design size from HTML meta tags or CSS and warn on aspect-ratio mismatch.
