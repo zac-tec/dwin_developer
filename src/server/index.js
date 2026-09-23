@@ -12,8 +12,8 @@ import {
 } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { safePath, dimensions, pageFiles } from "./project.js";
-import { renderPage, closeBrowser } from "./render.js";
+import { safePath, dimensions, pageFiles, mime } from "./project.js";
+import { detectDesignSize, aspectMismatch } from "./aspect.js";
 import { exportImages } from "./export.js";
 const repo = fileURLToPath(new URL("../../", import.meta.url));
 const app = express();
@@ -39,8 +39,12 @@ app.use((req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff");
   next();
 });
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "50mb" }));
 app.use(express.static(path.join(repo, "src/web")));
+app.use(
+  "/vendor/html2canvas",
+  express.static(path.join(repo, "node_modules/html2canvas/dist")),
+);
 async function createProject(entries) {
   if (
     !entries.length ||
@@ -53,8 +57,7 @@ async function createProject(entries) {
   const pages = pageFiles(files);
   if (!pages.length)
     throw new Error("No HTML pages found. Upload a static website folder.");
-  if (pages.length > 30)
-    throw new Error("Use up to 30 HTML pages per project.");
+  if (pages.length > 30) throw new Error("Use up to 30 HTML pages per project.");
   const root = await mkdtemp(path.join(os.tmpdir(), "dwin-developer-"));
   try {
     for (const e of entries) {
@@ -127,7 +130,50 @@ app.param("id", (req, res, next, id) => {
       .json({ error: "Project expired. Upload your folder again." });
   next();
 });
-app.post("/api/projects/:id/render", async (req, res, next) => {
+
+// Serve uploaded website files for in-browser preview via an iframe.
+// CSP blocks scripts and external resources, matching the previous
+// server-side security model.
+const PREVIEW_CSP =
+  "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'none'; frame-ancestors 'self';";
+app.use("/preview", async (req, res, next) => {
+  const parts = req.path.split("/").filter(Boolean);
+  const id = parts[0];
+  const rest = parts.slice(1).join("/");
+  if (!id || !rest) return res.status(404).send("Project or file not found.");
+  try {
+    const project = projects.get(id);
+    if (!project)
+      return res.status(404).send("Project expired. Upload your folder again.");
+    const asset = safePath(decodeURIComponent(rest));
+    if (!project.files.includes(asset))
+      return res.status(404).send("File not found in project.");
+    const filePath = path.join(project.root, asset);
+    res.set({
+      "Content-Type": mime(asset),
+      "Content-Security-Policy": PREVIEW_CSP,
+      "Cache-Control": "no-store",
+    });
+    if (/\.html?$/i.test(asset)) {
+      const html = await readFile(filePath, "utf-8");
+      const baseTag = `<base href="/preview/${id}/">`;
+      const animStyle =
+        '<style id="dwin-capture-style">*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}</style>';
+      const modified = html
+        .replace(/(<head[^>]*>)/i, `$1${baseTag}${animStyle}`)
+        .replace(/<body/i, '<body data-dwin-capture="1"');
+      res.send(modified);
+    } else {
+      res.sendFile(filePath);
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Receive browser-captured images. The frontend renders each page inside a
+// same-origin iframe, captures it with html2canvas, and uploads the PNG here.
+app.post("/api/projects/:id/capture", async (req, res, next) => {
   const project = req.project;
   if (project.busy)
     return res
@@ -136,18 +182,55 @@ app.post("/api/projects/:id/render", async (req, res, next) => {
   project.busy = true;
   try {
     const size = dimensions(req.body.width, req.body.height);
-    const rendered = [];
-    for (const [id, source] of project.pages.entries())
-      rendered.push({
-        id,
-        source,
-        ...(await renderPage(project, source, size)),
+    const captured = [];
+    for (const entry of req.body.pages) {
+      if (
+        entry.id < 0 ||
+        entry.id >= project.pages.length ||
+        !project.pages.includes(entry.source)
+      )
+        throw new Error(`Invalid page id or source: ${entry.source}`);
+      if (typeof entry.png !== "string" || !entry.png.startsWith("data:image"))
+        throw new Error("Missing or invalid PNG data for page capture.");
+      const png = Buffer.from(
+        entry.png.replace(/^data:image\/png;base64,/, ""),
+        "base64",
+      );
+      let warnings = [...(entry.warnings || [])];
+      try {
+        const htmlContent = await readFile(
+          path.join(project.root, entry.source),
+          "utf-8",
+        );
+        const cssFiles = project.files.filter((f) => /\.css$/i.test(f));
+        const cssContents = await Promise.all(
+          cssFiles.map((f) =>
+            readFile(path.join(project.root, f), "utf-8").catch(() => ""),
+          ),
+        );
+        const design = detectDesignSize({
+          html: htmlContent,
+          css: cssContents.join("\n"),
+        });
+        const mismatch = aspectMismatch(design, size);
+        if (mismatch.matches === false && mismatch.short)
+          warnings.push(mismatch.short);
+      } catch {
+        // Design-size detection is best-effort; skip on any read error.
+      }
+      captured.push({
+        id: entry.id,
+        source: entry.source,
+        title: entry.title || "",
+        png,
+        warnings,
       });
-    project.rendered = rendered;
+    }
+    project.rendered = captured;
     project.size = size;
     res.json({
       ...size,
-      pages: rendered.map(({ png, ...p }) => ({
+      pages: captured.map(({ png, ...p }) => ({
         ...p,
         preview: `/api/projects/${project.id}/images/${p.id}?v=${Date.now()}`,
       })),
@@ -196,14 +279,6 @@ app.post("/api/projects/:id/export", async (req, res, next) => {
 });
 app.use((error, req, res, next) => {
   const message = String(error.message || "Request failed.");
-  if (message.includes("browserType.launch")) {
-    console.error("Rendering browser failed to start:", message);
-    return res.status(503).json({
-      error: message.includes("Executable doesn't exist")
-        ? "The rendering browser is missing. Run npm run setup:browser in Terminal, then restart the app."
-        : "The rendering browser could not start. If running inside a restricted development session, start the app from your normal Terminal and try again. Your uploaded pages have not been rendered. See the server terminal for details.",
-    });
-  }
   res.status(400).json({ error: message.slice(0, 500) });
 });
 const expiry = setInterval(async () => {
@@ -219,7 +294,6 @@ const server = app.listen(Number(process.env.PORT || 3210), "127.0.0.1", () =>
 async function shutdown() {
   clearInterval(expiry);
   server.close();
-  await closeBrowser();
   for (const p of projects.values())
     await rm(p.root, { recursive: true, force: true });
   process.exit();

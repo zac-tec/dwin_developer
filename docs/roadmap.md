@@ -1,16 +1,18 @@
 # Roadmap
 
-Read the final **Latest handoff** in `../README.md` for current blockers and decisions. Checked items below mean code is implemented, not necessarily verified end-to-end. Chromium startup currently prevents confirmation of rendering/export; native ICL output remains unfinished.
+Read the final **Latest handoff** in `../README.md` for current blockers and decisions. Rendering is now done in-browser via iframe + html2canvas; the server-side Playwright Chromium path has been removed. Native ICL output remains unfinished.
 
 ## Stage 1 — Background assets (current)
 
 - [x] Static website folder upload, preserving relative assets
 - [x] Exact pixel dimensions, presets and aspect-ratio display
 - [x] One HTML file per screen, no automatic adaptation
-- [x] Actual Chromium rasterization at device scale 1
+- [x] In-browser iframe capture at device scale 1
 - [x] Local fonts/image loading, overflow and missing-resource warnings
+- [x] Design-size detection and aspect-ratio mismatch warnings (aspect.js)
 - [x] Page preview, ordering and inclusion
 - [x] Lossless PNG, configurable baseline JPEG, ZIP and manifest
+- [ ] Verified end-to-end render-to-ZIP (pending manual confirmation)
 - [ ] Verified native ICL generation (blocked on format/reference validation)
 - [ ] Hardware validation on the user's display
 

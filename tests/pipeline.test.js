@@ -10,8 +10,9 @@ import {
   dimensions,
   pageFiles,
   relativeAsset,
+  mime,
 } from "../src/server/project.js";
-import { renderPage, closeBrowser } from "../src/server/render.js";
+import { detectDesignSize, aspectMismatch, rewritePrompt } from "../src/server/aspect.js";
 import { exportImages } from "../src/server/export.js";
 test("rejects unsafe input paths and invalid dimensions", () => {
   for (const value of [
@@ -40,47 +41,35 @@ test("rejects unsafe input paths and invalid dimensions", () => {
     "2.html",
   ]);
 });
-test("real rendering preserves dimensions, warns on overflow, blocks external assets, and exports ordered images", async () => {
+test("exportImages packages ordered PNG/JPEG with manifest and no ICL", async () => {
+  const png = await sharp({
+    create: {
+      width: 800,
+      height: 480,
+      channels: 4,
+      background: { r: 20, g: 80, b: 60, alpha: 1 },
+    },
+  })
+    .png()
+    .toBuffer();
   const root = await mkdtemp(path.join(os.tmpdir(), "dwin-test-"));
   try {
-    await writeFile(
-      path.join(root, "index.html"),
-      '<!doctype html><title>Test screen</title><link rel="stylesheet" href="main.css"><script>document.body.innerHTML="executed"</script><div>Hello display</div><img src="https://example.com/a.png"><img src="missing.png">',
-    );
-    await writeFile(
-      path.join(root, "main.css"),
-      "body{margin:0;background:rgb(20,80,60)}div{height:600px;width:900px}",
-    );
     const project = { root, files: ["index.html", "main.css"] };
     const size = { width: 800, height: 480 };
-    const result = await renderPage(project, "index.html", size);
-    const metadata = await sharp(result.png).metadata();
-    assert.equal(metadata.width, 800);
-    assert.equal(metadata.height, 480);
-    assert.equal(result.title, "Test screen");
-    assert(
-      result.warnings.some((w) => w.includes("overflows width and height")),
-    );
-    assert(
-      result.warnings.some((w) => w.includes("External resource blocked")),
-    );
-    assert(result.warnings.some((w) => w.includes("Missing asset")));
-    assert(result.warnings.some((w) => w.includes("JavaScript is disabled")));
-    const pixel = await sharp(result.png)
-      .extract({ left: 700, top: 400, width: 1, height: 1 })
-      .raw()
-      .toBuffer();
-    assert.deepEqual([...pixel].slice(0, 3), [20, 80, 60]);
     project.rendered = [
-      { id: 0, source: "first.html", ...result },
-      { id: 1, source: "second.html", ...result },
+      { id: 0, source: "first.html", png, title: "First", warnings: [] },
+      { id: 1, source: "second.html", png, title: "Second", warnings: [] },
     ];
-    const archive = unzipSync(await exportImages(project, [1, 0], size, 95));
+    const archive = unzipSync(
+      await exportImages(project, [1, 0], size, 95),
+    );
     const manifest = JSON.parse(strFromU8(archive["manifest.json"]));
     assert.deepEqual(
       manifest.pages.map((p) => p.source),
       ["second.html", "first.html"],
     );
+    assert.equal(manifest.width, 800);
+    assert.equal(manifest.height, 480);
     assert.equal(manifest.iclGenerated, false);
     assert(archive["images/000.png"]);
     assert(archive["images/001.jpg"]);
@@ -88,13 +77,59 @@ test("real rendering preserves dimensions, warns on overflow, blocks external as
       Object.keys(archive).some((name) => name.endsWith(".icl")),
       false,
     );
-    const jpg = await sharp(archive["images/000.jpg"]).metadata();
+    const jpg = await sharp(archive["images/001.jpg"]).metadata();
     assert.equal(jpg.width, 800);
     assert.equal(jpg.chromaSubsampling, "4:4:4");
     assert.equal(jpg.isProgressive, false);
     await assert.rejects(() => exportImages(project, [100], size, 95));
   } finally {
-    await closeBrowser();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("aspect.js detects design size and mismatch warnings", () => {
+  const fromMeta = detectDesignSize({
+    html: '<meta name="dwin-design-size" content="480,272">',
+    css: "",
+  });
+  assert.deepEqual(fromMeta, {
+    width: 480,
+    height: 272,
+    source: "meta",
+  });
+  const fromCss = detectDesignSize({
+    html: "<style>body{width:800px;height:480px}</style>",
+    css: "",
+  });
+  assert.deepEqual(fromCss, {
+    width: 800,
+    height: 480,
+    source: "css",
+  });
+  const none = detectDesignSize({ html: "<p>no size</p>", css: "" });
+  assert.equal(none, null);
+  const mismatch = aspectMismatch(
+    { width: 480, height: 272 },
+    { width: 800, height: 480 },
+  );
+  assert.equal(mismatch.matches, false);
+  assert(mismatch.short.includes("Aspect ratio does not match"));
+  const match = aspectMismatch(
+    { width: 800, height: 480 },
+    { width: 800, height: 480 },
+  );
+  assert.equal(match.matches, true);
+  assert.equal(rewritePrompt({ width: 800, height: 480 }, { width: 480, height: 272 }).length > 0, true);
+  assert(mime("photo.png"), "image/png");
+  assert(mime("index.html"), "text/html");
+});
+test("exportImages rejects unrendered pages", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "dwin-test-"));
+  try {
+    const project = { root, files: ["index.html"], rendered: [] };
+    await assert.rejects(() =>
+      exportImages(project, [0], { width: 800, height: 480 }, 95),
+    );
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

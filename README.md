@@ -4,7 +4,7 @@
 
 A local web app for turning **already display-sized static websites** into numbered DWIN background source images.
 
-**Current milestone:** folder upload → exact-resolution Chromium rendering → page preview and ordering → PNG/JPEG ZIP export. Native `32.icl` encoding is **not implemented**. The exported ZIP is not a flash-ready DWIN project. Use the official DGUS ICL generator for that step.
+**Current milestone:** folder upload → in-browser iframe rendering (no server-side Chromium) → page preview and ordering → PNG/JPEG ZIP export. Native `32.icl` encoding is **not implemented**. The exported ZIP is not a flash-ready DWIN project. Use the official DGUS ICL generator for that step.
 
 ## Run
 
@@ -12,19 +12,18 @@ Requires Node.js 22 or newer.
 
 ```sh
 npm ci
-npm run setup:browser
 npm run dev
 ```
 
 Open http://localhost:3210. Click **Load sample project** for a two-page 800 × 480 example. Or choose the `examples/control-panel` folder using the folder picker.
 
-Optional: `DWIN_BROWSER_EXECUTABLE` can point to an installed Chrome/Chromium executable, avoiding the browser download. `PORT` changes the local port.
+`PORT` changes the local port.
 
 ## Workflow
 
 1. Design each HTML file for the exact target width and height. Keep CSS, fonts and images in the uploaded folder.
 2. Upload the folder and choose dimensions. The app does not adapt your layout or split long pages.
-3. Render. Each HTML file becomes one viewport-sized image at device scale 1. Scrolling content outside that viewport is cropped and flagged.
+3. Render. Each HTML file is loaded in a hidden iframe on your browser and captured as a viewport-sized image. Scrolling content outside that viewport is cropped and flagged. No server-side browser is required.
 4. Review warnings and page previews. Reorder pages with the arrows; uncheck pages you do not need.
 5. Download the source asset ZIP. Included pages receive sequential image indices starting at zero.
 6. Use the official DGUS ICL generator to turn the images into `DWIN_SET/32.icl`. Configure your actual display project separately.
@@ -36,20 +35,22 @@ Text is baked into the images. Touch navigation, live variables and native font 
 ```text
 src/
   web/              Browser interface, styles and interactions
+    app.js          DOM capture via html2canvas and export controls
   server/
-    index.js        Local HTTP API, temporary project lifecycle
+    index.js        Local HTTP API, project lifecycle, preview + capture endpoints
     project.js      Path and dimension validation
-    render.js       Chromium rendering and resource isolation
+    aspect.js       Design-size detection and aspect-ratio mismatch warnings
     export.js       PNG/JPEG packaging and manifest
+  (render.js kept for reference; no longer used in the main render path)
 examples/
   control-panel/    Ready-to-upload 800 × 480 static website
-tests/             Rendering, export and input validation tests
+tests/             Input validation, export, and aspect detection tests
 docs/              Architecture, roadmap and ICL research boundary
 ```
 
 ## Supported input
 
-Static HTML, local CSS, images and local font files. Relative paths and root-relative paths resolve within the uploaded folder. Each `.html` or `.htm` file is a screen. JavaScript and external network resources are deliberately disabled, so SPA source code and CDN-dependent pages need a static export with bundled assets. URL import is not implemented.
+Static HTML, local CSS, images and local font files. Relative paths resolve within the uploaded folder. Each `.html` or `.htm` file is a screen. JavaScript and external network resources are blocked by Content-Security-Policy during preview capture, so SPA source code and CDN-dependent pages need a static export with bundled assets. URL import is not implemented.
 
 Limit: 250 files, 10 MB per file, 50 MB total accepted content, 30 HTML pages, dimensions from 64 to 1920 pixels per side and up to 2,073,600 pixels overall. Projects are temporary and expire after one hour or server shutdown.
 
@@ -59,7 +60,7 @@ Limit: 250 files, 10 MB per file, 50 MB total accepted content, 30 HTML pages, d
 npm test
 ```
 
-Tests launch Chromium. Run browser setup first, or set `DWIN_BROWSER_EXECUTABLE`.
+Tests do not require a browser. They validate input sanitization, PNG/JPEG export packaging, and aspect-ratio detection.
 
 ## Deployment status
 
@@ -67,17 +68,9 @@ This version binds to loopback and is intended for local development. It is not 
 
 See [roadmap](docs/roadmap.md) for the next stages and [ICL research](docs/icl.md) for why the app does not emit an unverified ICL file.
 
-## macOS: rendering browser fails to launch
+## Rendering approach
 
-If the message includes `bootstrap_check_in`, `MachPortRendezvousServer`, or `Permission denied (1100)`, the server may be running inside a restricted execution session that prevents Chromium from starting. Launch it in your normal macOS Terminal instead. Do not disable the browser sandbox.
-
-For this checkout, if the browser was installed under `.runtime/browsers`, run:
-
-```sh
-PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers PORT=3211 npm start
-```
-
-Then open http://localhost:3211 and re-import your folder or load the sample. Port 3211 avoids a conflict with an existing preview on 3210. If the browser is missing, run `PLAYWRIGHT_BROWSERS_PATH=.runtime/browsers npm run setup:browser` first. This workaround still requires manual verification on your machine.
+The server-side headless Chromium (Playwright) path was removed because Chromium failed to launch in restricted execution sessions. Rendering now happens **in the user's browser**: uploaded HTML is served at `/preview/<project-id>/`, loaded in a hidden same-origin `<iframe>`, and captured as a PNG via `html2canvas`. A Content-Security-Policy header blocks scripts and external network resources during preview, preserving the same security model as before. No browser download or `npm run setup:browser` step is needed.
 
 ## Product idea and agreed scope
 
@@ -93,24 +86,23 @@ The user's first intended milestone is website-to-ICL generation. Our current im
 
 ## Phases and evidence
 
-| Phase                          | Intended result                                                                   | Current status                                                                                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1A: Prepared website to images | Upload, exact-size preview, page ordering, PNG/JPEG export                        | Code implemented; interface and sample import observed working. Rendering/export end-to-end still unverified because Chromium failed to launch. |
-| 1B: Images to ICL              | Valid `DWIN_SET/32.icl` from ordered page images                                  | Not implemented. Requires a verified format or official-tool integration and reference files.                                                   |
-| 2: Static touch navigation     | Touch regions and configuration for moving between pages                          | Discussed, not implemented.                                                                                                                     |
-| 3: Fonts and changing content  | Understand font libraries, native text, VP variables and controller mapping       | Discussed, not implemented. User wants font investigation after ICL.                                                                            |
-| Future                         | URL import, adapting other aspect ratios, broader website support, public hosting | Ideas only; not current scope.                                                                                                                  |
+| Phase                          | Intended result                                                                   | Current status                                                                                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1A: Prepared website to images | Upload, exact-size preview, page ordering, PNG/JPEG export                        | Reworked: server-side Playwright Chromium removed; rendering now uses in-browser iframe + html2canvas capture. End-to-end render still needs manual verification. |
+| 1B: Images to ICL              | Valid `DWIN_SET/32.icl` from ordered page images                                  | Not implemented. Requires a verified format or official-tool integration and reference files.                                                        |
+| 2: Static touch navigation     | Touch regions and configuration for moving between pages                          | Discussed, not implemented.                                                                                                                        |
+| 3: Fonts and changing content  | Understand font libraries, native text, VP variables and controller mapping       | Discussed, not implemented. User wants font investigation after ICL.                                                                                 |
+| Future                         | URL import, adapting other aspect ratios, broader website support, public hosting | Ideas only; not current scope.                                                                                                                     |
 
 See `docs/architecture.md` for module boundaries, `docs/icl.md` for ICL research requirements, and `docs/roadmap.md` for the feature checklist. A checked implementation item does not by itself mean it passed an end-to-end or hardware test.
 
 ## What we still need
 
-1. Resolve or confirm the Chromium launch issue in the user's normal Terminal. Obtain the current status text and final terminal error lines if rendering still stalls.
-2. Confirm one complete sample render and ZIP export: two 800 × 480 images, correct ordering, readable text, and valid manifest. The user prefers manual testing to reduce token use; do not repeat broad browser tests without a reason or request.
-3. Obtain the exact DWIN display model, controller generation, resolution and kernel version. These have **not yet been provided**.
-4. Obtain the official DGUS tool version and known-good ICL files generated from known source images. Prefer one-image and two-image examples to establish the binary format and ordering.
-5. Implement and verify ICL generation, then test on hardware. Do not rename a ZIP/JPEG to `.icl` or claim a package is flash-ready without evidence.
-6. After that, agree the touch and font milestones before expanding scope.
+1. Manually confirm one complete sample render and ZIP export at http://localhost:3210: two 800 × 480 images, correct ordering, readable text, and valid manifest. Rendering happens in your browser now; report any capture issues.
+2. Obtain the exact DWIN display model, controller generation, resolution and kernel version. These have **not yet been provided**.
+3. Obtain the official DGUS tool version and known-good ICL files generated from known source images. Prefer one-image and two-image examples to establish the binary format and ordering.
+4. Implement and verify ICL generation, then test on hardware. Do not rename a ZIP/JPEG to `.icl` or claim a package is flash-ready without evidence.
+5. After that, agree the touch and font milestones before expanding scope.
 
 ## Keeping this README current
 
@@ -133,6 +125,21 @@ For discussion-only decisions, record the agreement even when no application cod
 - **Important gap:** Native ICL generation was not implemented; export explicitly says it is not flash-ready. Current output is input for DWIN's official generator.
 - **Evidence:** UI opened; sample import returned three files and two HTML pages. Input validation test passed. Rendering integration test failed during browser launch, so downstream export was not verified by that test. Dependency audit reported zero vulnerabilities after updating Sharp.
 - **Repository:** Initial commit `f5041fa` pushed to `origin/main`.
+
+### 2026-09-22 — Rendering reworked from server-side Chromium to in-browser capture
+
+- **Decision:** The Playwright headless Chromium launch was unreliable in restricted execution sessions and required a `setup:browser` download. Replaced server-side rendering with in-browser iframe capture using `html2canvas`. The user's browser does the rendering; the server only serves files and stores captured images.
+- **Changed:** Removed the Playwright render endpoint and its import from `index.js`. Added `GET /preview/:id/:file` to serve uploaded files with a CSP that blocks scripts and external resources (preserving the security model). Added `POST /api/projects/:id/capture` to receive browser-captured PNGs. Reworked `src/web/app.js` to load each page in a hidden same-origin iframe, wait for fonts and images, capture via html2canvas, and upload PNGs. Integrated `aspect.js` (previously untracked) into the capture flow: the server reads each page's HTML/CSS, detects the design size, and adds aspect-ratio mismatch warnings. Increased Express JSON body limit to 50 MB for base64 image data. Removed `playwright` usage from the main code path; the `setup:browser` npm script and `render.js` are kept for reference but no longer used in production.
+- **Evidence:** `npm test` passes (4 tests: input validation, PNG/JPEG export packaging, aspect detection, unrendered-page rejection). Server and frontend pass `node --check` syntax validation. `html2canvas` ESM build verified present at `node_modules/html2canvas/dist/html2canvas.esm.js`.
+- **Verified:** Unit-level only. No end-to-end browser render test was run (per user preference for manual testing). The user should reload http://localhost:3210, load the sample project, and confirm pages render and export correctly.
+- **Repository:** All changes are local and uncommitted. `render.js` is still tracked in git (not deleted). `html2canvas` was added as a dependency via `npm install`.
+
+### 2026-09-22 — CSP fix and server-side integration test
+
+- **Bug found:** The preview CSP used `frame-ancestors 'none'`, which blocked the iframe from loading in the app. This caused `Failed to read a named property 'document' from 'Window': Blocked a frame from accessing a cross-origin frame` in the browser.
+- **Changed:** Updated CSP to `frame-ancestors 'self'` to allow same-origin iframe embedding. Added `iframe.sandbox = "allow-same-origin"` in the frontend for defense-in-depth against scripts. Added a guard in `capturePage` to produce a readable error if the iframe document is inaccessible.
+- **Evidence:** Server-side integration test passed on port 3213: demo project created, two pages captured via `POST /api/projects/:id/capture` (mock PNGs), images retrieved at `/api/projects/:id/images/:page` (HTTP 200), and export ZIP produced with correct ordering and `iclGenerated: false`. `npm test` passes (4 tests).
+- **Remaining:** The actual browser-side html2canvas capture path is untested (requires manual verification by the user). Old servers on ports 3210 and 3211 are still running the previous code; they must be stopped and restarted to use the reworked code.
 
 ### 2026-09-22 — Browser launch error and manual testing handoff
 
@@ -173,13 +180,14 @@ For discussion-only decisions, record the agreement even when no application cod
 
 ## Latest handoff — READ THIS FIRST
 
-- **Updated:** 2026-09-22 (evening). We are building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
-- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. Local is 4 commits ahead of `origin/main`. Push has not been re-confirmed; do not claim remote sync.
-- **Running now:** Servers already up at `http://localhost:3210` and `http://localhost:3211` (both HTTP 200). No need to restart unless they are stopped.
-- **Implemented:** Folder upload → one HTML file per page → exact target viewport → static capture → ordered PNG/JPEG ZIP and manifest. Status is mirrored beside the Render button, with connection and timeout errors surfaced.
-- **Not finished:** `32.icl` generation, native touch configuration, native fonts, live values, URL import and layout adaptation. Never call the ZIP flash-ready.
-- **Blocker update:** Chromium launch now **works** in this session (verified a headless shell starts). The earlier restricted-session launch failure is not current. A full render-to-ZIP result is still **unverified** because the confirming test was interrupted, not because it failed.
-- **Next action:** Reload the app and confirm the “Ready” status, then render. Use **480 × 272** for the user's `dgus-preview` site (its CSS fixes that size). Report the status text beside Render pages if no image appears.
-- **After rendering works:** Obtain the exact display model/kernel and known-good DWIN-generated ICL examples, then implement verified ICL output before native font work.
+- **Updated:** 2026-09-22. Building DWIN Developer together; the user is a beginner and prefers simple explanations and manual testing.
+- **Repository:** `https://github.com/zac-tec/dwin_developer.git`, branch `main`. Local is 9 commits ahead of `origin/main` (4 prior + 1 new rework commit, uncommitted). Do **not** claim remote sync; push has not been re-attempted.
+- **Rendering rework (just done):** Replaced server-side Playwright headless Chromium with in-browser iframe + `html2canvas` capture. The server now serves uploaded files at `/preview/<project-id>/` and receives captured PNGs at `POST /api/projects/:id/capture`. No `npm run setup:browser` is needed. `html2canvas` is imported client-side from `/vendor/html2canvas/`.
+- **Running:** `npm start` (or `npm run dev`). No servers are currently running — restart as needed. Open http://localhost:3210.
+- **Implemented:** Folder upload → iframe preview (CSP blocks JS and external resources) → html2canvas capture at chosen dimensions → page preview, ordering, inclusion → PNG/JPEG ZIP export with manifest. `aspect.js` is integrated to detect design size from HTML meta tags or CSS and warn on aspect-ratio mismatch.
+- **Not finished:** `32.icl` generation, native touch configuration, native fonts, live values, URL import, layout adaptation. Never call the ZIP flash-ready.
+- **Unverified:** The browser-side html2canvas capture path (the actual iframe rendering and image capture in the browser) is untested. Unit tests and server-side integration tests pass, but the full browser capture flow needs manual verification.
+- **CSP fix:** `frame-ancestors` changed from `'none'` to `'self'` to allow the app to load preview pages in an iframe. Old servers on ports 3210/3211 are running pre-rework code and must be stopped and restarted to pick up the changes.
+- **Next action:** Stop any running servers (`kill $(lsof -ti:3210)` etc.), then run `npm start`. Open http://localhost:3210, load the sample project, and confirm pages render and export correctly. Report any capture issues.
 - **Update rule:** Read `AGENTS.md`; append a progress entry and rewrite this final handoff after every meaningful change or agreed decision. Keep this section last.
 

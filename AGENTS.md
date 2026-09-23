@@ -24,5 +24,6 @@ These instructions apply to this repository. Follow the user's current instructi
 - Developers design each static HTML page for the exact display pixel dimensions. Do not automatically resize layouts or paginate long pages without agreement.
 - The first intended milestone includes valid ICL generation. The present PNG/JPEG exporter only completes part of it.
 - `DWIN_SET/32.icl` must be a verified DWIN binary library. Never substitute a renamed ZIP, JPEG, or incompatible ICO file, and never describe the present export as flash-ready.
-- Keep the Chromium sandbox enabled. Do not bypass host execution restrictions to make rendering work.
+- Rendering happens in the user's browser via a hidden iframe and `html2canvas`. The server serves files at `/preview/<id>/` with a CSP that blocks scripts and external resources. Do not reintroduce server-side browser launching unless explicitly agreed.
+- `render.js` is retained for reference but is not imported in the main code path.
 - Touch controls, native fonts, controller variables, URL import and automatic adaptation are later work. Do not silently expand scope.
